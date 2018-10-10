@@ -1,0 +1,914 @@
+
+
+
+Installing Elastic Search and Kibana on Windows
+
+	1.	Extract both zip
+	2.	open config/kibana.yml and update elasticsearch.url to point to elasticsearch
+	3.	Running Elastic Search and Kibana
+		1.	First Start elasticsearch bin/elasticsearch.bat
+		2.	Second start kibana bin/kibana.bat
+		
+Overview of Elastic Search
+
+	1.	Elastic Search is Document Oriented Search Engine
+	2.	In Elastic Search we can 
+		a.	Insert Documents
+		b. 	Delete Documents
+		c.	Retrieve Documents
+		d.	Analyze Documents
+		c.	Search Documents
+		
+	3.	Why Elastic Search ?
+		
+		- 	Elastic Search is there for searching 
+	
+	4. 	Elastic Search is built on top of Apache Lucene
+		- 	Apache Lucene uses inverted index Data Structure to Index the data
+	
+	5.	Elastic Search uses Inverted Index Data Structure to index the data
+		- 	ES organizes data into inverted indexed data structure that allows faster searching capabilities
+		https://www.elastic.co/guide/en/elasticsearch/guide/2.x/inverted-index.html
+		
+		-	An Inverted Index consists of list of unique words that appear in any documents and a document where it appears
+		-	To create an inverted index
+			1.	We need to split content field of each documents in to separate words called tokens or terms
+			2.	Create a sorted list of unique tokens
+			3.	Then list in which document each term appears
+			
+			
+	
+====================================================================
+
+
+1.	Indexing, Retrieving and Deleting Documents
+
+		1. Relationship b/w DB and Elasticsearch
+		
+			-	DB 
+				-	Table
+				- 	Row 
+				- 	Column
+				
+			- Elasticsearch 
+				
+				-	Indexing
+				-	Document
+				-	Field
+				
+				
+		2.	Index > Type > Document > Field
+		3.	Creating = Indexing
+		4.	Type is deprecated in future versions of Elasticsearch	
+			-	Type is used to further divide the index in to smaller parts
+		5.	Documents in elasticsearch is Immutable
+			-	When we try to update the field in ES then it will first retrieve the document
+			-	Then create a new document with updating the field
+
+2.	Components of an Index
+	
+		1.	While indexing a new document elasticsearch will creates a additional fields called metafields
+		2.	Fields like 
+			
+				_index
+				_type
+				_id
+				_version
+				_shards
+				_seq_no
+				
+						{
+						  "_index": "bussiness",
+						  "_type": "building",
+						  "_id": "111",
+						  "_version": 1,
+						  "result": "created",
+						  "_shards": {
+							"total": 2,
+							"successful": 1,
+							"failed": 0
+						  },
+						  "created": true
+						}
+					
+		3.	/{index_name}
+				
+			Ex : /business
+			
+				{
+				  "bussiness": {
+					"aliases": {},
+					"mappings": {
+					  "building": {
+						"properties": {
+						  "address": {
+							"type": "text",
+							"fields": {
+							  "keyword": {
+								"type": "keyword",
+								"ignore_above": 256
+							  }
+							}
+						  },
+						  "floors": {
+							"type": "long"
+						  },
+						  "loc": {
+							"properties": {
+							  "lan": {
+								"type": "long"
+							  },
+							  "lat": {
+								"type": "long"
+							  }
+							}
+						  },
+						  "offices": {
+							"type": "long"
+						  }
+						}
+					  }
+					},
+					"settings": {
+					  "index": {
+						"creation_date": "1538672683261",
+						"number_of_shards": "5",
+						"number_of_replicas": "1",
+						"uuid": "ZE-XDTCYQ2ywOTRG6_Z-nQ",
+						"version": {
+						  "created": "5040199"
+						},
+						"provided_name": "bussiness"
+					  }
+					}
+				  }
+				}
+			
+				
+				
+				1.	Mappings - mappings describes all the field types in the Documents
+					-	When new field is added to document then ES will update the index structure with new field type
+				
+				2. 	_search is a endpoint
+					
+					/{index}/{_type}/_search or /{index}/_search
+					-	 _search is a endpoint used to search the index 
+					-	returns all the documents
+
+				
+				
+3.	Distributed Execution of Requests
+
+		1. 	Documents in the index are divided into shards
+		2.	Each shards is having a back up of replica either in same node or in different node
+		3.	What happens when request is sent to particular node
+			
+				-	Sending an indexing request to node2 for ex
+					-	When index request is made to node2 then it run the hashing function by passing the ID 
+					-	Hashing Function determines where actually the document needs to go
+					-	Based on the hashing function, Indexing requesting will be redirected to particular node
+		4.	What is basically a Shard
+				
+				-	Shard basically a container of Lucene Index called inverted index or segments
+				-	Each Shard contains multiple segments
+				-	Each segment is an inverted index
+				-	Inverted Index provides a Faster Searching Capabilities
+				
+		5.	Indexing documents takes more time in ES
+			-	Because data needs to be prepared and goes through process called analysis
+			-	Analysis is a process of converting text into inverted index
+		
+
+	
+4.	Text Analysis for Indexing and Searching
+
+	
+	1.	An Analyzer has two parts
+		1.	Tokenizer
+		2.	Filter
+	2.	Text will go inside the analyzer and tokens in inverted will come out as output
+	3.	Text analysis will be done as part of both indexing and searching
+	4.	Text Analysis
+		
+		-	Remove 	Stop Words
+		-	Lower Casing
+		-	Stemming
+		-	Synonyms
+		
+	5.	Each document will go though the analysis process and analysis can be applied at particular feilds
+	
+	
+	
+	
+====================================================================
+	
+Index Settings and Mappings
+	
+	1.	ES by default creates mappings for the property types based on the document field value type
+	2.	We can create a custom mapping to our fields
+	3.	By default mappings will set to dynamic so that it will creates new mappings if a new property is added
+			
+		-	we can override this by changing mapping to strict
+		- 	if _dynamic set to false - indexing fields will be ignored
+		-	if	_dynamic set to strict - indexing will throw error
+		
+	4.	GET /customers/_mapping/online
+		{
+			"dynamic": false
+		}
+	
+		GET /customers/_mapping/online
+		{
+			"dynamic":"strict"
+		}
+	
+	
+	5.	POST _analyze 
+		{
+			"analyzer" :"whitespace",
+			"text": "The quick brown fox"
+		}
+	
+	6. 	Some of the default analyzers
+	
+			a. 	whitespace
+				- Removes the white spaces
+			b.	Standard
+				- 	Removes white spaces and lowercased the tokens
+				-	removes the punctuation
+			c.	Simple
+				-	Similar to standard
+				-	Ignores the non-alphabets
+			4.	English
+				-	Removes special characters
+				-	Removes the stopping words like the, of, is
+				-	Ignores the punctuation
+				-	Applies the stemming
+						EX: word -> running is transformed to run
+									foxes is transformed to fox	
+	7.	Custom Analyzers
+			
+		-	We can define our own Custom analyzers
+		-	Custom analyzers are defined in settings section of index
+		-	Custom analyzers are used apply the custom analysis on the documents
+		
+			-	How to create a custom analyzers
+				
+				1.	Define a Custom Analyzers in the Settings Section
+				2.	Define the type and tokenizer type and filters
+				2.	Use them in the mappings section and apply for the particular properties by referring to custom analyzers
+				3.  We can also use the custom analyzers to verify the text
+				
+						
+						PUT my_index
+						{
+						  "settings": {
+							"analysis": {
+							  "analyzer": {
+								"std_folded": { 
+								  "type": "custom",
+								  "tokenizer": "standard",
+								  "filter": [
+									"lowercase",
+									"asciifolding"
+								  ]
+								}
+							  }
+							}
+						  },
+						  "mappings": {
+							"my_type": {
+							  "properties": {
+								"my_text": {
+								  "type": "text",
+								  "analyzer": "std_folded" 
+								}
+							  }
+							}
+						  }
+						}
+
+						GET my_index/_analyze 
+						{
+						  "analyzer": "std_folded", 
+						  "text":     "Is this déjà vu?"
+						}
+
+						GET my_index/_analyze 
+						{
+						  "field": "my_text", 
+						  "text":  "Is this déjà vu?"
+						}
+					
+	
+	
+====================================================================
+
+Querying Elastic Search
+
+		a. 	Everything in Elasticsearch is JSON over HTTP
+		b.	ES uses DSL - JSON DSL - Domain Specific Language
+		c.	We can query ES with language that ES can understand
+		d.	ES provides something called relevancy score so that more relevant documents come up at top
+		e.	Relevancy score indicates how documents are relevant to particular searching query
+		f.  Both Query and Filter Context can be combined to form a more complex query
+		g. 	Two types of search context in ES 
+				1. 	Query Context
+				2.	Search Context
+		h. 	Multi_match can be used for field boosting
+		i. 	Field boosting is used to increase the relevancy
+			
+		1.	Search DSL Query Context
+			2.	Search DSL Filter Context
+			3.	Aggregations
+						
+		Search DSL Components
+			1.	Query Context
+					
+						- 	Starts with query parameter
+						-	Everything expects "query" as the first parameter in ES
+					
+						a. 	Query
+						b.	bool
+						c.	match_all
+						d.	must
+						e.	must_not
+						f.	should --> minimum_should_match
+						g.	multi_match
+						h.	match_phrase
+						i. 	range
+						
+							
+							-	Starts with Query as the top field
+							
+								GET /courses/_search
+								{
+									"query" : {
+										"match" : {
+											"name": "computer"
+										}
+									}
+									
+								}
+								
+								GET /courses/_search
+								{
+									"query" : {
+										"match_all" : {}
+									}
+								}
+								
+								
+								GET /courses/_search 
+								{
+									"query" : {
+										"bool" : {
+											"must" : [
+												{ "match" : {"name" : "computer" } },
+												{ "match" : {"room" : "c8" } }
+											]
+										}
+									}
+								}
+								
+								GET /courses/_search
+								{
+									"query" : {
+										"bool" : {
+											"must" : [
+											{ "match" : {"name" : "accounting"} }
+											],
+											"must_not" : [
+												{ "match" : { "room" : "e5" } }
+											],
+											"should" : [
+												 { "range" : {
+														"gte" : 10,
+														"lte" : 50
+													}
+												 }
+											],
+											"minimum_should_match" : 1
+										}							
+									}
+								}
+				
+			2.	Filter Context
+			
+				-	Filter parameter is not the first in the search query 
+				-	Query parameter is the first param in the search query
+				-	filter param always needs to wrap up in the bool field
+				-	filter supports all the operations that query supports
+				-	filter supports bool param so that we can use must, must_not,should,multi_match
+				-	filter ignores the relevancy values unlike query
+				-	filter is faster than query as it ignores relevancy values
+			
+
+			
+	
+	2.	Aggregations
+
+		1.	By default only 10 documents will be pulled up
+		2.	
+	
+	
+	
+		Aggregation Operations
+			1. 	sort
+			2. 	count - is a endpoint
+			3.	avg, max, min
+			4.	stats ----> Instead of using avg, max, min
+			5.	 range
+	
+	
+====================================================================
+1.	Logstash
+
+	-	Logstash is a opensource data processing pipeline engine
+	-	Logstash is used to inject data from  multiple data sources
+		- 	Application logs and DB and other things
+	-	There are three stages is Logstash
+		
+		1.	Getting data from data source into pipeline
+		2.	Filtering the unwanted data
+		3.	Outputting the data to destination
+		
+	- 	Writing conf file injecting data from multiple datasources using plugins
+
+		-	inputs
+			-	file
+			-	kafka
+			-	MYSQL
+			-	TCP
+			-	Redis
+			
+			
+				input {
+					file {
+						path => ""
+						type => "logs"
+						start_position => "beginning"
+					}
+				}
+			
+			
+		- 	filters
+			- 	grok
+				-	Basically is a regular expression to extract the logs 
+				-	Go to Github for more details
+				-	Provides many regular expressions to extract the logs
+				
+					grok {
+						match => {
+							"message" => "%{COMBINEDAPACHELOG}%"
+						}
+					}
+				
+			-	geoip
+				-	Used to find out the IP address from the log
+					
+					geoip {
+						source => "clientip"
+					}
+					
+			-	date
+				-	Pulls up the date from the logs and format it to specified date format
+				
+					date {
+						match => ["dd/MMM/YYYY:HH:mm:ss Z"]
+						locale => en
+						remove_field => "timestamp"	
+					}
+			-	mutate
+				- 	Used to convert the data type from one type to another type
+				-	Ex: bytes to integer
+				
+				mutate {
+					convert => { "bytes" => "integer" }
+				}
+				
+			-	useragent
+				-	Used to detect the type device
+				-	Ex : Phone or tablet computer
+				
+				useragent {
+					source => "agent"
+					target => "useragent"
+				}
+				
+				
+		-	outputs
+			- output can elastic search
+			
+				output {
+					stdout {
+						codec => "rubydebug"
+					}
+					
+					elasticsearch {
+						localhost:9200
+					}
+				}
+	
+2.	Kibana
+
+	- 	Kibana is used to visualize the data in the elastic search
+	-	Kibana is used to query the elastic search data
+	- 	Kibana is a business analytical tool
+	
+
+
+3.	ELK Architecture
+	
+	
+	1.	Logstash is a resource intensive tool so cant install logstash on the user or application devices 
+	2.	Better approach is to use Beats Framework - newly introduced by ES
+	3.	Beats are running on the edge servers and are very light-weight
+	4.	Beats tails the logs and send them as events to logstash 
+		
+		-	logstash going to consume those events, parse them and them to logstash
+		-	File Beat is one the beat used to send the message to logstash
+		
+	5.	Beats List
+
+		-	Metric Beat	- Used for collecting metrics from OS
+		-	Heart Beat
+		-	Packet Beat - used for N/w
+		
+	6.	File Beat
+		
+		-	Light-weight shipper of logs
+		-	Its Robust and Doesn't miss a beat
+		-	File Beat can be run as a container
+		-	Wont Overload the pipeline
+			-	Uses Back-Pressure Sensitive Protocol
+		-	Can be ship logs to either Logstash or ES
+		
+	
+4.	Setting-Up File Beat
+		
+	1.	Download and extract 
+	2.	Configure or update the filebeat.yml file for file to be read  and where needs to push the logs
+	
+	3.	How File Beat Works
+		
+		-	File beat consist of three components
+			
+			a.	Prospector
+				
+				- 	Responsible for identifying the list files
+				-	Can be directory or list of files
+							
+			b.	Harvester
+				
+				-	Is responsible for reading the logs 
+				-	One Harvester is responsible for one file
+								
+			c.	Spooler
+				
+				-	Spooler is a section where all the lines are combined and sent over to the destinations
+
+				
+5.	Indexing using Filebeat with Logstash
+
+	1.	Configure Logstash to read data from filebeat
+	
+	Logstash:
+		2.	Update the conf file to read the data from the filebeat with port 5044
+		3.	Update the output of logstash to ES
+		
+			Update input and output section of log file
+		
+	4.	Update filebeat.yml to send the logs to logstash
+		
+		-	Files to be read from
+		-	Server details of logstash
+		
+			
+	
+=====================================================================================================================================================================================
+PUT /vehicles/cars/1
+{
+  "make": "honda",
+  "milage": 12,
+  "color": "red",
+  "HP":280
+}
+
+
+GET /vehicles/cars/1/_source
+GET /vehicles/cars/1
+GET /vehicles/bikes
+
+POST /vehicles/cars/1/_update
+{
+  "doc": {
+    "color":"blue",
+    "hp":5000,
+    "driver":"bharath"
+  }
+}
+
+
+
+
+HEAD /vehicles/cars/2
+
+
+DELETE /vehicles/cars
+
+
+
+PUT /bussiness/building/111
+{
+  "address": "Mantralaya",
+  "floors": 200,
+  "offices": 300000,
+  "loc" : {
+    "lat" :90,
+    "lan": 40
+  }
+}
+
+GET /bussiness
+
+
+
+PUT /busines/building/223
+{
+  "name": "Guru Raghavendra",
+  "title": "Emperor",
+  "salary_usd":999999999999999,
+  "address": "Mantralaya",
+  "hiredate":"Sep 13,1595"
+  
+  
+}
+
+GET business/employee/222
+
+GET /business
+
+PUT /employees/employee/123
+{
+  "name": "Bharath Ashok",
+  "title": "Emperor",
+  "salary_usd":999999999999999999,
+  "hiredate":"Sep 13,1990"
+  
+}
+
+
+GET /employees/employee/_search
+
+
+GET /busines/_search
+GET /busines/_search 
+{
+  "query" : {
+   "term": {
+     "address": {
+       "value": "Mantralaya"
+     }
+   }
+  }
+}
+
+GET /busines/_search
+{
+  "query" : {
+    "match_all": { }
+  }
+}
+
+
+PUT /customers
+{
+  "settings": {
+    "number_of_replicas": 1,
+    "number_of_shards": 2
+  },
+  "mappings":{
+    
+  }
+  
+}
+
+put /customers
+{
+  "mappings" : {
+    "online" :{
+      "properties" :{
+        "gender" :{
+          "type":"text",
+          "analyzer":"standard"
+        }
+      }
+    }
+  }
+}
+
+
+PUT /customers/online/124
+{
+  "name": "Bharath AShok",
+  "address":"310 Clark Ave",
+  "gender": "male",
+  "age":28,
+  "total_spent":13,
+  "is_new":false,
+  "country":"India"
+}
+
+GET /customers
+
+
+GET /customers/_mapping/online
+{
+  "dynamic":true
+}
+
+#Analyzers
+POST _analyze
+{
+  "analyzer": "",
+  "text":["The quick brow fox."]
+}
+
+POST _analyze
+{
+  "analyzer": "english",
+  "text":     "The quickly 234 browns foxes 3433."
+}
+
+
+GET /courses/_search
+{
+  "query" :{
+    "match_all": {
+      
+    }
+  }
+}
+
+GET /courses/_search
+{
+  "query" :{
+    "match": {"name": "computer"}
+  }
+}
+
+PUT /courses/classroom/5
+{
+       "name": "Theatre 410",
+    "room": "T18",
+    "professor": {
+      "name": "Sebastian Hern",
+      "department": "art",
+      "facutly_type": "part-time"
+    },
+    "students_enrolled": 47,
+    "course_publish_date": "2013-01-27",
+    "course_description": "Tht 410 is an advanced elective course disecting the various plays written by shakespere during the 16th century"
+}
+
+
+GET /courses/classroom/5
+
+
+#Verify whether field exist or not
+GET /courses/_search
+{
+  "query" : {
+    "exists" :{
+      "field":"professor.email"
+    }
+  }
+}
+
+#Multiple Criteria
+GET /courses/_search
+{
+  "query" : {
+    "bool":{
+    "must": [
+        {"match":{"name":"computer"}},
+        {"match": {"room":"c8"}}
+        ]  
+      }
+    }
+}
+
+GET /courses/_search
+{
+  "query" : {
+    "match_all" : {}
+  }
+  
+}
+
+GET /courses/_search
+{
+  "query" : {
+    "bool":{
+    "must": [
+        {"match":{"name":"computer"}},
+        {"match": {"room":"c8"}}
+        ],
+        
+      "must_not" : [
+        {"match" : {"professor.name": "bil"}}
+        ],
+        
+      "should" : [
+          {"match" : {"name" : "computer"}}
+        ],
+        "minimum_should_match" : 1
+      }
+    
+    }
+}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+		
+
+	
+	
+	
+	
+	
+	
+		
+		
+			
+		
+			
+		
